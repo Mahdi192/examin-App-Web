@@ -8,6 +8,10 @@ import {
 import { auth } from "./firebase";
 import { useAuth } from "./AuthContext";
 import { createNote, deleteNote, listenToMyNotes, updateNote } from "./notesService";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "./firebase";
+
+
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -19,6 +23,25 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const [file, setFile] = useState(null);
+  const [fileUrl,setFileUrl] = useState("")
+
+  const uploadFile = async () => {
+    if (!file || !user) return;
+    
+    const fileRef = ref(storage, `uploads/${user.uid}/${file.name}`)
+    await uploadBytes(fileRef,file);
+
+    const url = await getDownloadURL(fileRef);
+    setFileUrl(url);
+
+  }
+
+
+
+
+
+
 
   const loginGoogle = async () => {
     try {
@@ -128,6 +151,20 @@ export default function App() {
       </div>
 
       <hr style={{ margin: "20px 0" }} />
+
+      <hr />
+
+<h2>Uploader un fichier</h2>
+<input type="file" onChange={(e) => setFile(e.target.files[0])} />
+<button onClick={uploadFile}>Uploader</button>
+
+{fileUrl && (
+  <p>
+    Fichier uploadé :{" "}
+    <a href={fileUrl} target="_blank">Voir le fichier</a>
+  </p>
+)}
+
 
       {/* READ + UPDATE + DELETE */}
       <h2>Mes notes</h2>
