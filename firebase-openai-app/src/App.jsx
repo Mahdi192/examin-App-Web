@@ -33,14 +33,9 @@ export default function App() {
     await uploadBytes(fileRef,file);
 
     const url = await getDownloadURL(fileRef);
-    setFileUrl(url);
+    setFileUrl(url)
 
   }
-
-
-
-
-
 
 
   const loginGoogle = async () => {
