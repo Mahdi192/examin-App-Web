@@ -1,35 +1,54 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { auth } from "./firebase";
+import { useAuth } from "./AuthContext";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+     const { user, loading } = useAuth();
+
+  const loginGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  const loginGithub = async () => {
+    const provider = new GithubAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+  };
+  
+
+  if (loading) return <div style={{ padding: 24 }}>Chargement...</div>;
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div style={{ fontFamily: "system-ui", padding: 24, maxWidth: 720, margin: "0 auto" }}>
+      <h1>AI Notes Manager</h1>
 
-export default App
+      {!user ? (
+        <>
+          <p>Connecte-toi pour accéder à tes notes.</p>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button onClick={loginGoogle}>Se connecter avec Google</button>
+            <button onClick={loginGithub}>Se connecter avec GitHub</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p>
+            Connecté en tant que <b>{user.displayName || user.email}</b>
+          </p>
+          <p style={{ opacity: 0.8, marginTop: 4 }}>UID: {user.uid}</p>
+
+          <button onClick={logout} style={{ marginTop: 12 }}>
+            Se déconnecter
+          </button>
+
+          <hr style={{ margin: "24px 0" }} />
+          <p>✅ Section Auth terminée. Prochaine étape : Firestore (CRUD).</p>
+        </>
+      )}
+    </div>
+  );
+}
