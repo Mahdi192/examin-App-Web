@@ -7,9 +7,18 @@ import {
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { useAuth } from "./AuthContext";
-import { createNote, deleteNote, listenToMyNotes, updateNote } from "./notesService";
+import {
+  createNote,
+  deleteNote,
+  listenToMyNotes,
+  updateNote,
+} from "./notesService";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "./firebase";
+import { askOpenAIText } from "./openaiService";
+
+
+
 
 
 
@@ -23,19 +32,43 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+
+  // ✅ Storage
   const [file, setFile] = useState(null);
-  const [fileUrl,setFileUrl] = useState("")
+  const [fileUrl, setFileUrl] = useState("");
+
+  // ✅ OpenAI (AJOUT)
+  const [prompt, setPrompt] = useState("");
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const uploadFile = async () => {
     if (!file || !user) return;
-    
-    const fileRef = ref(storage, `uploads/${user.uid}/${file.name}`)
-    await uploadBytes(fileRef,file);
+
+    const fileRef = ref(storage, `uploads/${user.uid}/${file.name}`);
+    await uploadBytes(fileRef, file);
 
     const url = await getDownloadURL(fileRef);
-    setFileUrl(url)
+    setFileUrl(url);
+  };
 
+  const onAskAI = async () => {
+    if(!prompt.trim()) return;
+
+    try{
+      setAiLoading(true);
+      setAiText("")
+      const text = await askOpenAIText(prompt.trim());
+      setAiText(text);
+
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setAiLoading(false);
+    }
   }
+
+
 
 
   const loginGoogle = async () => {
@@ -60,13 +93,15 @@ export default function App() {
 
   // ✅ READ (real-time)
   useEffect(() => {
-    if(!user) return;
+    if (!user) return;
     const unsub = listenToMyNotes(user.uid, setNotes);
     return () => unsub();
   }, [user]);
-  
 
-  const canCreate = useMemo(() => title.trim() && content.trim(), [title, content]);
+  const canCreate = useMemo(
+    () => title.trim() && content.trim(),
+    [title, content]
+  );
 
   const onCreate = async () => {
     if (!user) return;
@@ -88,7 +123,10 @@ export default function App() {
   };
 
   const onSaveEdit = async () => {
-    await updateNote(editingId, { title: editTitle.trim(), content: editContent.trim() });
+    await updateNote(editingId, {
+      title: editTitle.trim(),
+      content: editContent.trim(),
+    });
     cancelEdit();
   };
 
@@ -129,11 +167,7 @@ export default function App() {
       {/* CREATE */}
       <h2>Créer une note</h2>
       <div style={{ display: "grid", gap: 10 }}>
-        <input
-          placeholder="Titre"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <input placeholder="Titre" value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea
           placeholder="Contenu"
           value={content}
@@ -147,19 +181,37 @@ export default function App() {
 
       <hr style={{ margin: "20px 0" }} />
 
-      <hr />
+      {/* STORAGE */}
+      <h2>Uploader un fichier</h2>
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button onClick={uploadFile}>Uploader</button>
 
-<h2>Uploader un fichier</h2>
-<input type="file" onChange={(e) => setFile(e.target.files[0])} />
-<button onClick={uploadFile}>Uploader</button>
+      {fileUrl && (
+        <p>
+          Fichier uploadé :{" "}
+          <a href={fileUrl} target="_blank" rel="noreferrer">
+            Voir le fichier
+          </a>
+        </p>
+      )}
 
-{fileUrl && (
-  <p>
-    Fichier uploadé :{" "}
-    <a href={fileUrl} target="_blank">Voir le fichier</a>
-  </p>
-)}
+      <hr style={{ margin: "20px 0" }} />
 
+      {/* ✅ OPENAI (AJOUT) */}
+      <h2>OpenAI</h2>
+      <div style={{ display: "grid", gap: 10 }}>
+        <input
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Ex: Résume ma dernière note en 3 points"
+        />
+        <button onClick={onAskAI} disabled={aiLoading}>
+          {aiLoading ? "Génération..." : "Générer"}
+        </button>
+        {aiText && <pre style={{ whiteSpace: "pre-wrap" }}>{aiText}</pre>}
+      </div>
+
+      <hr style={{ margin: "20px 0" }} />
 
       {/* READ + UPDATE + DELETE */}
       <h2>Mes notes</h2>
